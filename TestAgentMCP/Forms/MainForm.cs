@@ -49,6 +49,28 @@ namespace TestAgentMCP
               : "Clé manquante: configure OpenAiApiKey dans le fichier projet (.csproj).");
 		}
 
+		// Les appels MCP rapprochés (animation) sont regroupés en une seule ligne de log.
+		private readonly Dictionary<string, int> _mcpPending = new();
+		private System.Windows.Forms.Timer? _mcpSummaryTimer;
+
+		private void RecordMcpCall(string description)
+		{
+			_mcpPending[description] = _mcpPending.GetValueOrDefault(description) + 1;
+			if (_mcpSummaryTimer == null)
+			{
+				_mcpSummaryTimer = new System.Windows.Forms.Timer { Interval = 700 };
+				_mcpSummaryTimer.Tick += (_, _) =>
+				{
+					_mcpSummaryTimer.Stop();
+					AppendStatus("MCP: " + string.Join(", ", _mcpPending.Select(p => $"{p.Value}× {p.Key}")));
+					_mcpPending.Clear();
+				};
+			}
+
+			_mcpSummaryTimer.Stop();
+			_mcpSummaryTimer.Start();
+		}
+
 		private const int HttpMcpPort = 3333;
 		private HttpMcpHost? _httpMcpHost;
 
@@ -56,8 +78,16 @@ namespace TestAgentMCP
 		{
 			// Les requêtes HTTP arrivent sur des threads du pool : on les marshale sur le thread UI.
 			var httpServer = new LocalMcpServer(
-				() => (LocalMcpServer.CanvasState)Invoke(BuildCanvasState),
-				result => Invoke(() => ApplyAgentResultFromMcp(result)));
+				() => (LocalMcpServer.CanvasState)Invoke(() =>
+				{
+					RecordMcpCall("get_canvas_state");
+					return BuildCanvasState();
+				}),
+				result => Invoke(() =>
+				{
+					RecordMcpCall($"{result.Action} de {result.Infos.Count} forme(s)");
+					ApplyAgentResultFromMcp(result);
+				}));
 			try
 			{
 				_httpMcpHost = new HttpMcpHost(httpServer, HttpMcpPort, message => LogLine("MCP_HTTP", message));
