@@ -14,6 +14,7 @@ namespace TestAgentMCP
         private readonly LocalMcpServer _mcpServer;
 		private SquareState? _draggedSquare;
 		private Point _dragOffset;
+		private Color? _selectedColor;
 
 		public MainForm()
 		{
@@ -33,20 +34,46 @@ namespace TestAgentMCP
 			btnAddCircle.Click += (_, _) => AddShape(Shape.Circle);
 			btnAddLosange.Click += (_, _) => AddShape(Shape.Losange);
            btnClearAll.Click += btnClearAll_Click;
+			btnColor.Click += btnColor_Click;
             chkDeleteMode.CheckedChanged += chkDeleteMode_CheckedChanged;
             MouseDown += MainForm_MouseDown;
 			MouseMove += MainForm_MouseMove;
 			MouseUp += MainForm_MouseUp;
+			Shown += (_, _) => StartHttpMcpServer();
+			FormClosed += (_, _) => _httpMcpHost?.Dispose();
 			SetStatus(_agent.IsConfigured
 				? "Agent prêt. Saisis un prompt puis clique sur Envoyer."
               : "Clé manquante: configure OpenAiApiKey dans le fichier projet (.csproj).");
+		}
+
+		private const int HttpMcpPort = 3333;
+		private HttpMcpHost? _httpMcpHost;
+
+		private void StartHttpMcpServer()
+		{
+			// Les requêtes HTTP arrivent sur des threads du pool : on les marshale sur le thread UI.
+			var httpServer = new LocalMcpServer(
+				() => (LocalMcpServer.CanvasState)Invoke(BuildCanvasState),
+				result => Invoke(() => ApplyAgentResultFromMcp(result)));
+			try
+			{
+				_httpMcpHost = new HttpMcpHost(httpServer, HttpMcpPort, message => LogLine("MCP_HTTP", message));
+				_httpMcpHost.Start();
+				AppendStatus($"Serveur MCP à l'écoute: {_httpMcpHost.Url}");
+			}
+			catch (Exception ex)
+			{
+				_httpMcpHost = null;
+				AppendStatus($"Serveur MCP HTTP non démarré: {ex.Message}");
+				LogLine("ERROR", ex.ToString());
+			}
 		}
 
         private void AddShape(Shape shape)
 		{
 			var newId = _squares.Count == 0 ? 1 : _squares.Max(s => s.Id) + 1;
             var rect = GetRandomRectangle(_squares.Select(s => s.Bounds).ToList());
-			var color = GetRandomColor();
+			var color = _selectedColor ?? GetRandomColor();
 
           _squares.Add(new SquareState(newId, rect, color, shape));
 			AppendStatus($"Forme {shape} #{newId} ajoutée en position aléatoire ({rect.X},{rect.Y}) avec couleur {ColorTranslator.ToHtml(color)}.");
@@ -120,6 +147,26 @@ namespace TestAgentMCP
 			AppendStatus("Mode suppression désactivé.");
 			LogLine("MODE", "DeleteMode=Off");
            Invalidate();
+		}
+
+		private void btnColor_Click(object? sender, EventArgs e)
+		{
+			using var colorDialog = new ColorDialog
+			{
+				Color = _selectedColor ?? Color.Red,
+				FullOpen = true
+			};
+
+			if (colorDialog.ShowDialog(this) != DialogResult.OK)
+			{
+				return;
+			}
+
+			_selectedColor = colorDialog.Color;
+			btnColor.BackColor = colorDialog.Color;
+			btnColor.ForeColor = colorDialog.Color.GetBrightness() > 0.5f ? Color.Black : Color.White;
+			AppendStatus($"Couleur des prochaines formes: {ColorTranslator.ToHtml(colorDialog.Color)}.");
+			LogLine("COLOR_SELECT", $"Color={ColorTranslator.ToHtml(colorDialog.Color)}");
 		}
 
 		private void btnClearAll_Click(object? sender, EventArgs e)
@@ -402,14 +449,14 @@ namespace TestAgentMCP
 
 			if (result.Action != null && result.Action.Equals("Add", StringComparison.InvariantCultureIgnoreCase))
 			{
-				foreach (var info in result.Infos)
-				{
-					var square = _squares.FirstOrDefault(s => s.Id == info.Id);
-					if (square != null)
+					var nextId = Math.Max(result.Infos.Select(s => s.Id).DefaultIfEmpty(0).Max(), _squares.Select(s => s.Id).DefaultIfEmpty(0).Max()) + 1;
+					foreach (var info in result.Infos)
 					{
-						info.Id = Math.Max(result.Infos.Max(s => s.Id), _squares.Max(s => s.Id)) + 1;
+						if (info.Id <= 0 || _squares.Any(s => s.Id == info.Id))
+						{
+							info.Id = nextId++;
+						}
 					}
-				}
 			}
 
 			foreach (var info in result.Infos)

@@ -37,6 +37,7 @@
             chkDeleteMode = new CheckBox();
 			btnClearAll = new Button();
 			btnAddSquare = new Button();
+			btnColor = new Button();
 			txtStatus = new TextBox();
 			pnlToolbar.SuspendLayout();
 			SuspendLayout();
@@ -74,6 +75,7 @@
 			// 
 			pnlToolbar.BackColor = Color.DimGray;
             pnlToolbar.Controls.Add(btnClearAll);
+			pnlToolbar.Controls.Add(btnColor);
 			pnlToolbar.Controls.Add(btnAddLosange);
 			pnlToolbar.Controls.Add(btnAddCircle);
 			pnlToolbar.Controls.Add(chkDeleteMode);
@@ -122,6 +124,15 @@
 			btnClearAll.TabIndex = 4;
 			btnClearAll.Text = "Clear";
 			btnClearAll.UseVisualStyleBackColor = true;
+			// 
+			// btnColor
+			// 
+			btnColor.Location = new Point(8, 212);
+			btnColor.Name = "btnColor";
+			btnColor.Size = new Size(56, 34);
+			btnColor.TabIndex = 5;
+			btnColor.Text = "Color";
+			btnColor.UseVisualStyleBackColor = true;
 			// 
 			// btnAddSquare
 			// 
@@ -175,5 +186,6 @@
 		private Button btnAddCircle;
 		private Button btnAddLosange;
        private Button btnClearAll;
+		private Button btnColor;
 	}
 }

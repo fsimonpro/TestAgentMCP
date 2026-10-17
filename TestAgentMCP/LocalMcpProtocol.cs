@@ -136,15 +136,35 @@ namespace TestAgentMCP
 							new
 							{
 								name = "apply_square_updates",
-								description = "Applique des mises à jour de carrés (add/update/remove).",
+								description = "Ajoute, modifie ou supprime des formes sur le canvas, puis retourne le nouvel état. " +
+									"Add: crée de nouvelles formes (id ignoré, attribué automatiquement ; position aléatoire si x/y omis). " +
+									"Update: modifie les formes existantes par id (seuls les champs fournis changent). " +
+									"Remove: supprime les formes dont l'id est donné.",
 								inputSchema = new
 								{
 									type = "object",
 									properties = new
 									{
-										action = new { type = "string" },
-										infos = new { type = "array" }
-									}
+										action = new { type = "string", @enum = new[] { "Add", "Update", "Remove" } },
+										infos = new
+										{
+											type = "array",
+											items = new
+											{
+												type = "object",
+												properties = new
+												{
+													id = new { type = "integer", description = "Id de la forme (Update/Remove)." },
+													x = new { type = "integer" },
+													y = new { type = "integer" },
+													size = new { type = "integer", description = "Côté/diamètre en pixels (défaut 60)." },
+													color = new { type = "string", description = "Couleur HTML, ex. #FF0000 ou Red." },
+													shape = new { type = "string", @enum = new[] { "Square", "Circle", "Losange" } }
+												}
+											}
+										}
+									},
+									required = new[] { "action", "infos" }
 								}
 							}
 						}
@@ -190,7 +210,7 @@ namespace TestAgentMCP
 
 				return BuildResult(id, new
 				{
-					content = new object[] { new { type = "text", text = "ok" } }
+					content = new object[] { new { type = "text", text = JsonSerializer.Serialize(_stateProvider(), _jsonOptions) } }
 				});
 			}
 
