@@ -21,62 +21,18 @@ namespace TestAgentMCP
 		private DocState? _dragUndo;
 		private Rectangle _dragStart;
 
-		private Panel? _pnlPlayer;
-		private Button _btnPlay = null!;
-		private TrackBar _slider = null!;
-		private Label _lblFrame = null!;
-		private System.Windows.Forms.Timer _playTimer = null!;
-
 		private bool HasAnimation => _frames.Count > 1;
 
-		private bool IsPlaying => _playTimer is { Enabled: true };
+		private bool IsPlaying => playTimer.Enabled;
 
-		private void InitializeAnimationUi()
+		// Les contrôles du lecteur et le menu Édition sont déclarés dans MainForm.Designer.cs ; ici seulement les événements.
+		private void WireAnimationEvents()
 		{
-			var width = ClientSize.Width - pnlToolbar.Width;
-			_pnlPlayer = new Panel
-			{
-				Visible = false,
-				BackColor = Color.FromArgb(60, 60, 60),
-				Size = new Size(width, PlayerHeight),
-				Location = new Point(0, ClientSize.Height - PlayerHeight),
-				Anchor = AnchorStyles.Bottom | AnchorStyles.Left
-			};
-
-			_btnPlay = new Button { Text = "▶", Location = new Point(8, 6), Size = new Size(44, 32), UseVisualStyleBackColor = true };
-			_slider = new TrackBar
-			{
-				AutoSize = false,
-				TickStyle = TickStyle.None,
-				Minimum = 0,
-				Maximum = 1,
-				Location = new Point(60, 4),
-				Size = new Size(width - 60 - 190, 36)
-			};
-			_lblFrame = new Label
-			{
-				ForeColor = Color.White,
-				TextAlign = ContentAlignment.MiddleCenter,
-				Location = new Point(width - 176, 6),
-				Size = new Size(110, 32)
-			};
-			var btnClose = new Button { Text = "✕", Location = new Point(width - 60, 6), Size = new Size(48, 32), UseVisualStyleBackColor = true };
-
-			_btnPlay.Click += (_, _) => TogglePlayback();
-			_slider.Scroll += (_, _) => ShowFrame(_slider.Value);
-			btnClose.Click += (_, _) => EndAnimation();
-			_pnlPlayer.Controls.AddRange([_btnPlay, _slider, _lblFrame, btnClose]);
-			Controls.Add(_pnlPlayer);
-			_pnlPlayer.BringToFront();
-
-			_playTimer = new System.Windows.Forms.Timer { Interval = 1000 / DefaultFps };
-			_playTimer.Tick += (_, _) => ShowFrame((_currentFrame + 1) % _frames.Count);
-
-			var mnuUndo = new ToolStripMenuItem("&Annuler") { ShortcutKeys = Keys.Control | Keys.Z };
+			btnPlay.Click += (_, _) => TogglePlayback();
+			sliderFrame.Scroll += (_, _) => ShowFrame(sliderFrame.Value);
+			btnCloseAnimation.Click += (_, _) => EndAnimation();
+			playTimer.Tick += (_, _) => ShowFrame((_currentFrame + 1) % _frames.Count);
 			mnuUndo.Click += (_, _) => UndoOrTextUndo();
-			var mnuEdit = new ToolStripMenuItem("&Édition");
-			mnuEdit.DropDownItems.Add(mnuUndo);
-			menuStrip.Items.Add(mnuEdit);
 		}
 
 		// ---- Snapshots / undo -------------------------------------------------------------------------
@@ -255,36 +211,31 @@ namespace TestAgentMCP
 			}
 
 			CommitCurrentFrame();
-			_playTimer.Interval = Math.Max(1, 1000 / _fps);
-			_playTimer.Start();
+			playTimer.Interval = Math.Max(1, 1000 / _fps);
+			playTimer.Start();
 			SyncPlayerUi();
 		}
 
 		private void StopPlayback()
 		{
-			_playTimer?.Stop();
+			playTimer.Stop();
 			SyncPlayerUi();
 		}
 
 		/// <summary>Affiche/masque le lecteur ; la fenêtre grandit pour que la zone de dessin ne change pas.</summary>
 		private void RefreshPlayer()
 		{
-			if (_pnlPlayer is null)
-			{
-				return;
-			}
-
 			var show = HasAnimation;
-			if (show != _pnlPlayer.Visible)
+			if (show != pnlPlayer.Visible)
 			{
 				if (!show)
 				{
-					_pnlPlayer.Visible = false;
+					pnlPlayer.Visible = false;
 				}
 
 				ClientSize = new Size(ClientSize.Width, ClientSize.Height + (show ? PlayerHeight : -PlayerHeight));
-				_pnlPlayer.Location = new Point(0, ClientSize.Height - PlayerHeight);
-				_pnlPlayer.Visible = show;
+				pnlPlayer.Location = new Point(0, ClientSize.Height - PlayerHeight);
+				pnlPlayer.Visible = show;
 			}
 
 			SyncPlayerUi();
@@ -292,15 +243,15 @@ namespace TestAgentMCP
 
 		private void SyncPlayerUi()
 		{
-			if (_pnlPlayer is null || !HasAnimation)
+			if (!HasAnimation)
 			{
 				return;
 			}
 
-			_slider.Maximum = _frames.Count - 1;
-			_slider.Value = Math.Clamp(_currentFrame, 0, _slider.Maximum);
-			_lblFrame.Text = $"{_currentFrame + 1} / {_frames.Count}";
-			_btnPlay.Text = IsPlaying ? "⏸" : "▶";
+			sliderFrame.Maximum = _frames.Count - 1;
+			sliderFrame.Value = Math.Clamp(_currentFrame, 0, sliderFrame.Maximum);
+			lblFrame.Text = $"{_currentFrame + 1} / {_frames.Count}";
+			btnPlay.Text = IsPlaying ? "⏸" : "▶";
 		}
 	}
 }

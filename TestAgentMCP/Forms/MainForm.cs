@@ -19,7 +19,7 @@ namespace TestAgentMCP
 		public MainForm()
 		{
 			InitializeComponent();
-			InitializeAnimationUi();
+			WireAnimationEvents();
 			DoubleBuffered = true;
             _mcpServer = new LocalMcpServer(BuildCanvasState, ApplyAgentResultFromMcp);
 			_agent = new AgentMCP(
@@ -475,7 +475,7 @@ namespace TestAgentMCP
 		private Rectangle GetDrawingArea()
 		{
 			var top = txtStatus.Bottom + 12;
-			var playerHeight = _pnlPlayer is { Visible: true } ? PlayerHeight : 0;
+			var playerHeight = pnlPlayer.Visible ? PlayerHeight : 0;
 			var height = Math.Max(1, ClientSize.Height - top - 12 - playerHeight);
          var rightLimit = pnlToolbar.Left - 6;
 			var width = Math.Max(1, rightLimit);

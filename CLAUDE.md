@@ -26,4 +26,6 @@ Règles d'usage :
 
 - Build : `dotnet build TestAgentMCP/TestAgentMCP.csproj` (fermer l'app avant, sinon l'exe est verrouillé).
 - Code : `Forms/MainForm.cs` (UI, état des formes), `Mcp/LocalMcpProtocol.cs` (outils MCP + transport en mémoire), `Mcp/HttpMcpHost.cs` (transport HTTP), `Agent/AgentMCP.cs` (agent OpenAI).
+- **UI = Designer** : tout contrôle visible (boutons, panneaux, menus, timers…) est déclaré dans `Forms/MainForm.Designer.cs` (`InitializeComponent`, champs sans `_`) pour apparaître dans la vue Conception de Visual Studio. Jamais de `new Button()`/`new Panel()` en code dans `MainForm.cs` ou les autres partials ; ils ne contiennent que la logique et le câblage des événements. Seuls les contrôles purement dynamiques (créés selon les données) peuvent être faits en code.
+- Les partials `MainForm.*.cs` sont de la logique, pas des formulaires : ne pas les ouvrir en vue Conception ni laisser créer de `.resx` associé (deux `.resx` sur le même `MainForm` cassent la build : MSB3577).
 - La clé OpenAI vit dans `TestAgentMCP/OpenAi.props` (ignoré par git). Ne jamais la committer ni l'écrire dans le `.csproj`.

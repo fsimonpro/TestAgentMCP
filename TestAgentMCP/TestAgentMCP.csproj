@@ -28,6 +28,12 @@
     </AssemblyAttribute>
   </ItemGroup>
 
+  <!-- Partials de MainForm : du code, pas des formulaires (empêche VS de les ouvrir dans le concepteur et de créer des .resx). -->
+  <ItemGroup>
+    <Compile Update="Forms\MainForm.Animation.cs" SubType="Code" />
+    <Compile Update="Forms\MainForm.Presets.cs" SubType="Code" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include=".github\copilot-instructions.md" />
   </ItemGroup>
