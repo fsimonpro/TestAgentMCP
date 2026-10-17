@@ -21,5 +21,5 @@ Règles d'usage :
 ## Développement
 
 - Build : `dotnet build TestAgentMCP/TestAgentMCP.csproj` (fermer l'app avant, sinon l'exe est verrouillé).
-- Code : `MainForm.cs` (UI, état des formes), `LocalMcpProtocol.cs` (outils MCP + transport en mémoire), `HttpMcpHost.cs` (transport HTTP), `AgentMCP.cs` (agent OpenAI).
+- Code : `Forms/MainForm.cs` (UI, état des formes), `Mcp/LocalMcpProtocol.cs` (outils MCP + transport en mémoire), `Mcp/HttpMcpHost.cs` (transport HTTP), `Agent/AgentMCP.cs` (agent OpenAI).
 - La clé OpenAI vit dans `TestAgentMCP/OpenAi.props` (ignoré par git). Ne jamais la committer ni l'écrire dans le `.csproj`.

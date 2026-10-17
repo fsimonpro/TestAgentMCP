@@ -39,13 +39,18 @@
 			btnAddSquare = new Button();
 			btnColor = new Button();
 			txtStatus = new TextBox();
+			menuStrip = new MenuStrip();
+			mnuFile = new ToolStripMenuItem();
+			mnuSavePreset = new ToolStripMenuItem();
+			mnuLoadPreset = new ToolStripMenuItem();
 			pnlToolbar.SuspendLayout();
+			menuStrip.SuspendLayout();
 			SuspendLayout();
 			// 
 			// txtPrompt
 			// 
 			txtPrompt.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-			txtPrompt.Location = new Point(12, 12);
+			txtPrompt.Location = new Point(12, 40);
 			txtPrompt.Name = "txtPrompt";
 			txtPrompt.PlaceholderText = "Ex: mets le carré rouge en bas à droite, et le bleu en jaune";
 			txtPrompt.Size = new Size(796, 27);
@@ -54,7 +59,7 @@
 			// btnApplyPrompt
 			// 
 			btnApplyPrompt.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-           btnApplyPrompt.Location = new Point(814, 10);
+           btnApplyPrompt.Location = new Point(814, 38);
 			btnApplyPrompt.Name = "btnApplyPrompt";
 			btnApplyPrompt.Size = new Size(75, 34);
 			btnApplyPrompt.TabIndex = 1;
@@ -64,7 +69,7 @@
 			// btnOpenLog
 			// 
 			btnOpenLog.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-           btnOpenLog.Location = new Point(895, 10);
+           btnOpenLog.Location = new Point(895, 38);
 			btnOpenLog.Name = "btnOpenLog";
 			btnOpenLog.Size = new Size(49, 34);
 			btnOpenLog.TabIndex = 2;
@@ -145,16 +150,42 @@
 			// txtStatus
 			// 
 			txtStatus.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-			txtStatus.Location = new Point(12, 54);
+			txtStatus.Location = new Point(12, 82);
 			txtStatus.Multiline = true;
 			txtStatus.Name = "txtStatus";
 			txtStatus.ReadOnly = true;
 			txtStatus.ScrollBars = ScrollBars.Vertical;
-            txtStatus.Size = new Size(932, 84);
+            txtStatus.Size = new Size(932, 56);
 			txtStatus.TabIndex = 3;
 			// 
+			// menuStrip
+			//
+			menuStrip.Items.AddRange(new ToolStripItem[] { mnuFile });
+			menuStrip.Location = new Point(0, 0);
+			menuStrip.Name = "menuStrip";
+			menuStrip.Size = new Size(1024, 28);
+			menuStrip.TabIndex = 5;
+			//
+			// mnuFile
+			//
+			mnuFile.DropDownItems.AddRange(new ToolStripItem[] { mnuSavePreset, mnuLoadPreset });
+			mnuFile.Name = "mnuFile";
+			mnuFile.Text = "&Fichier";
+			//
+			// mnuSavePreset
+			//
+			mnuSavePreset.Name = "mnuSavePreset";
+			mnuSavePreset.ShortcutKeys = Keys.Control | Keys.S;
+			mnuSavePreset.Text = "&Enregistrer le preset...";
+			//
+			// mnuLoadPreset
+			//
+			mnuLoadPreset.Name = "mnuLoadPreset";
+			mnuLoadPreset.ShortcutKeys = Keys.Control | Keys.O;
+			mnuLoadPreset.Text = "&Charger un preset...";
+			//
 			// MainForm
-			// 
+			//
 			AcceptButton = btnApplyPrompt;
 			AutoScaleDimensions = new SizeF(8F, 20F);
 			AutoScaleMode = AutoScaleMode.Font;
@@ -164,11 +195,15 @@
 			Controls.Add(btnOpenLog);
 			Controls.Add(btnApplyPrompt);
 			Controls.Add(txtPrompt);
+			Controls.Add(menuStrip);
 			FormBorderStyle = FormBorderStyle.FixedSingle;
+			MainMenuStrip = menuStrip;
 			MaximizeBox = false;
 			Name = "MainForm";
 			Text = "Créateur de carrés - Agent MCP";
 			pnlToolbar.ResumeLayout(false);
+			menuStrip.ResumeLayout(false);
+			menuStrip.PerformLayout();
 			ResumeLayout(false);
 			PerformLayout();
 		}
@@ -186,5 +221,9 @@
 		private Button btnAddLosange;
        private Button btnClearAll;
 		private Button btnColor;
+		private MenuStrip menuStrip;
+		private ToolStripMenuItem mnuFile;
+		private ToolStripMenuItem mnuSavePreset;
+		private ToolStripMenuItem mnuLoadPreset;
 	}
 }

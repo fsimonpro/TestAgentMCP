@@ -36,6 +36,8 @@ namespace TestAgentMCP
            btnClearAll.Click += btnClearAll_Click;
 			btnColor.Click += btnColor_Click;
 			btnColor.Paint += btnColor_Paint;
+			mnuSavePreset.Click += (_, _) => SavePreset();
+			mnuLoadPreset.Click += (_, _) => LoadPreset();
             chkDeleteMode.CheckedChanged += chkDeleteMode_CheckedChanged;
             MouseDown += MainForm_MouseDown;
 			MouseMove += MainForm_MouseMove;
