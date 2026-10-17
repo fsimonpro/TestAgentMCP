@@ -10,6 +10,10 @@ Outils (`mcp__shapes__*`) :
 - `get_canvas_state` : lit la zone de dessin (`DrawingLeft/Top/Width/Height`) et les formes `{Id, X, Y, Size, Color, Shape}`.
 - `apply_square_updates` : `action` = `Add` | `Update` | `Remove`, `infos` = liste de `{id, x, y, size, color, shape}`. Retourne le nouvel état.
 
+- `set_animation` : `frames` = liste (2 à 50) de listes de `{id, x, y, size, color, shape}`, `fps` optionnel (défaut 15). Chaque frame s'applique en Update sur la précédente (la 1re part de l'état courant). Joue en boucle avec un lecteur (slider, lecture/stop) ; `frames: []` supprime l'animation. `get_canvas_state` expose `FrameCount/CurrentFrame/IsPlaying/Fps`.
+
+App : Ctrl+Z annule (10 états max, y compris les modifs MCP) ; en animation, l'édition manuelle modifie la frame affichée.
+
 Règles d'usage :
 - Appelle toujours `get_canvas_state` d'abord (positions et ids actuels, limites).
 - `Add` : l'id est ignoré (attribué automatiquement) ; x/y omis = position aléatoire ; taille par défaut 60 px.

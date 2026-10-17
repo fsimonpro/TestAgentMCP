@@ -19,6 +19,7 @@ namespace TestAgentMCP
 		public MainForm()
 		{
 			InitializeComponent();
+			InitializeAnimationUi();
 			DoubleBuffered = true;
             _mcpServer = new LocalMcpServer(BuildCanvasState, ApplyAgentResultFromMcp);
 			_agent = new AgentMCP(
@@ -87,6 +88,11 @@ namespace TestAgentMCP
 				{
 					RecordMcpCall($"{result.Action} de {result.Infos.Count} forme(s)");
 					ApplyAgentResultFromMcp(result);
+				}),
+				request => Invoke(() =>
+				{
+					RecordMcpCall($"set_animation ({request.Frames?.Count ?? 0} frame(s))");
+					ApplyAnimation(request);
 				}));
 			try
 			{
@@ -104,7 +110,8 @@ namespace TestAgentMCP
 
         private void AddShape(Shape shape)
 		{
-			var newId = _squares.Count == 0 ? 1 : _squares.Max(s => s.Id) + 1;
+			PushUndo();
+			var newId = NextShapeId();
             var rect = GetRandomRectangle(_squares.Select(s => s.Bounds).ToList());
 			var color = _selectedColor;
 
@@ -116,6 +123,11 @@ namespace TestAgentMCP
 
 		private void MainForm_MouseDown(object? sender, MouseEventArgs e)
 		{
+			if (IsPlaying)
+			{
+				return;
+			}
+
             var selectedSquare = _squares.LastOrDefault(square => IsPointInsideShape(square, e.Location));
 
 			if (e.Button == MouseButtons.Right)
@@ -133,6 +145,7 @@ namespace TestAgentMCP
 
 				if (colorDialog.ShowDialog(this) == DialogResult.OK)
 				{
+					PushUndo();
 					selectedSquare.Color = colorDialog.Color;
 					AppendStatus($"Couleur du carré {selectedSquare.Id} modifiée en {ColorTranslator.ToHtml(selectedSquare.Color)}.");
 					LogLine("COLOR", $"SquareId={selectedSquare.Id};Color={ColorTranslator.ToHtml(selectedSquare.Color)}");
@@ -154,6 +167,7 @@ namespace TestAgentMCP
 
 			if (chkDeleteMode.Checked)
 			{
+				PushUndo();
 				_squares.Remove(selectedSquare);
 				AppendStatus($"Carré {selectedSquare.Id} supprimé (mode delete). ");
 				LogLine("DELETE", $"SquareId={selectedSquare.Id}");
@@ -162,6 +176,8 @@ namespace TestAgentMCP
 			}
 
 			_draggedSquare = selectedSquare;
+			_dragUndo = CaptureState();
+			_dragStart = selectedSquare.Bounds;
 
 			_dragOffset = new Point(e.X - _draggedSquare.Bounds.X, e.Y - _draggedSquare.Bounds.Y);
 		}
@@ -231,6 +247,7 @@ namespace TestAgentMCP
 				return;
 			}
 
+			PushUndo();
 			var removedCount = _squares.Count;
 			_squares.Clear();
 			_draggedSquare = null;
@@ -263,6 +280,12 @@ namespace TestAgentMCP
 				return;
 			}
 
+			if (_dragUndo is not null && _draggedSquare.Bounds != _dragStart)
+			{
+				PushUndo(_dragUndo);
+			}
+
+			_dragUndo = null;
 			AppendStatus($"Carré {_draggedSquare.Id} déplacé à X={_draggedSquare.Bounds.X}, Y={_draggedSquare.Bounds.Y}.");
 			_logDrag(_draggedSquare);
 			_draggedSquare = null;
@@ -361,6 +384,10 @@ namespace TestAgentMCP
 				DrawingTop = area.Top,
 				DrawingWidth = area.Width,
 				DrawingHeight = area.Height,
+				FrameCount = HasAnimation ? _frames.Count : 1,
+				CurrentFrame = _currentFrame,
+				IsPlaying = IsPlaying,
+				Fps = _fps,
 				Squares = _squares
 					.Select(square => new LocalMcpServer.CanvasSquare
 					{
@@ -377,6 +404,7 @@ namespace TestAgentMCP
 
 		private void ApplyAgentResultFromMcp(AgentMCP.AgentResult result)
 		{
+			PushUndo();
 			ApplyAgentResult(result);
 			Invalidate();
 		}
@@ -447,7 +475,8 @@ namespace TestAgentMCP
 		private Rectangle GetDrawingArea()
 		{
 			var top = txtStatus.Bottom + 12;
-			var height = Math.Max(1, ClientSize.Height - top - 12);
+			var playerHeight = _pnlPlayer is { Visible: true } ? PlayerHeight : 0;
+			var height = Math.Max(1, ClientSize.Height - top - 12 - playerHeight);
          var rightLimit = pnlToolbar.Left - 6;
 			var width = Math.Max(1, rightLimit);
 			return new Rectangle(0, top, width, height);
@@ -503,7 +532,7 @@ namespace TestAgentMCP
 
 			if (result.Action != null && result.Action.Equals("Add", StringComparison.InvariantCultureIgnoreCase))
 			{
-					var nextId = Math.Max(result.Infos.Select(s => s.Id).DefaultIfEmpty(0).Max(), _squares.Select(s => s.Id).DefaultIfEmpty(0).Max()) + 1;
+					var nextId = Math.Max(result.Infos.Select(s => s.Id).DefaultIfEmpty(0).Max(), NextShapeId() - 1) + 1;
 					foreach (var info in result.Infos)
 					{
 						if (info.Id <= 0 || _squares.Any(s => s.Id == info.Id))

@@ -100,10 +100,54 @@ namespace TestAgentMCP
 		}
 	}
 
-	internal sealed class LocalMcpServer(Func<LocalMcpServer.CanvasState> stateProvider, Action<AgentMCP.AgentResult> applySquareUpdates)
+	internal sealed class LocalMcpServer(
+		Func<LocalMcpServer.CanvasState> stateProvider,
+		Action<AgentMCP.AgentResult> applySquareUpdates,
+		Action<LocalMcpServer.AnimationRequest>? setAnimation = null)
 	{
 		private readonly Func<CanvasState> _stateProvider = stateProvider;
 		private readonly Action<AgentMCP.AgentResult> _applySquareUpdates = applySquareUpdates;
+		private readonly Action<AnimationRequest>? _setAnimation = setAnimation;
+
+		private static readonly object SetAnimationTool = new
+		{
+			name = "set_animation",
+			description = "Définit une animation de 2 à 50 frames, jouée en boucle par l'app (15 fps par défaut) avec un lecteur " +
+				"(slider, lecture/stop). Chaque frame est une liste de formes {id, x, y, size, color, shape} appliquée en Update sur la " +
+				"frame précédente (la première part de l'état courant) : ne liste que ce qui change ; un id inconnu crée la forme. " +
+				"frames vide: supprime l'animation et garde la frame affichée. Une seule frame: simple mise à jour.",
+			inputSchema = new
+			{
+				type = "object",
+				properties = new
+				{
+					fps = new { type = "integer", minimum = 1, maximum = 60, description = "Images par seconde (défaut 15)." },
+					frames = new
+					{
+						type = "array",
+						maxItems = 50,
+						items = new
+						{
+							type = "array",
+							items = new
+							{
+								type = "object",
+								properties = new
+								{
+									id = new { type = "integer" },
+									x = new { type = "integer" },
+									y = new { type = "integer" },
+									size = new { type = "integer", description = "Côté/diamètre en pixels." },
+									color = new { type = "string", description = "Couleur HTML, ex. #FF0000 ou Red." },
+									shape = new { type = "string", @enum = new[] { "Square", "Circle", "Losange" } }
+								}
+							}
+						}
+					}
+				},
+				required = new[] { "frames" }
+			}
+		};
 		private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
 		public Task<string> HandleAsync(string requestJson, CancellationToken cancellationToken = default)
@@ -127,6 +171,7 @@ namespace TestAgentMCP
 					{
 						tools = new object[]
 						{
+						SetAnimationTool,
 							new
 							{
 								name = "get_canvas_state",
@@ -214,6 +259,22 @@ namespace TestAgentMCP
 				});
 			}
 
+			if (string.Equals(name, "set_animation", StringComparison.OrdinalIgnoreCase))
+			{
+				if (_setAnimation is null)
+				{
+					return BuildError(id, -32602, "set_animation indisponible sur ce transport.");
+				}
+
+				var request = JsonSerializer.Deserialize<AnimationRequest>(@params.GetProperty("arguments").GetRawText(), _jsonOptions) ?? new AnimationRequest();
+				_setAnimation(request);
+
+				return BuildResult(id, new
+				{
+					content = new object[] { new { type = "text", text = JsonSerializer.Serialize(_stateProvider(), _jsonOptions) } }
+				});
+			}
+
 			return BuildError(id, -32602, "Tool MCP inconnu.");
 		}
 
@@ -245,7 +306,17 @@ namespace TestAgentMCP
 			public int DrawingTop { get; set; }
 			public int DrawingWidth { get; set; }
 			public int DrawingHeight { get; set; }
+			public int FrameCount { get; set; } = 1;
+			public int CurrentFrame { get; set; }
+			public bool IsPlaying { get; set; }
+			public int Fps { get; set; }
 			public List<CanvasSquare> Squares { get; set; } = [];
+		}
+
+		internal sealed class AnimationRequest
+		{
+			public int? Fps { get; set; }
+			public List<List<AgentMCP.SquareUpdate>>? Frames { get; set; }
 		}
 
 		internal sealed class CanvasSquare
