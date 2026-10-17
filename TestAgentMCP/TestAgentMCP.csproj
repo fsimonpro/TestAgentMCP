@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Clé locale non versionnée : copier OpenAi.props.example vers OpenAi.props -->
+  <Import Project="OpenAi.props" Condition="Exists('OpenAi.props')" />
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OpenAiModel>gpt-4o-mini</OpenAiModel>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ArtifactsDir>$(MSBuildProjectDirectory)\artifacts\</ArtifactsDir>
+    <ZipIndexFile>$(ArtifactsDir)zip-index.txt</ZipIndexFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>OpenAiApiKey</_Parameter1>
+      <_Parameter2>$(OpenAiApiKey)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>OpenAiModel</_Parameter1>
+      <_Parameter2>$(OpenAiModel)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include=".github\copilot-instructions.md" />
+  </ItemGroup>
+
+  <Target Name="CreateReleaseZip" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <MakeDir Directories="$(ArtifactsDir)" />
+    <Warning Condition="'$(OpenAiApiKey)' == '' OR '$(OpenAiApiKey)' == '__SET_OPENAI_API_KEY__'" Text="OpenAiApiKey n'est pas défini dans le fichier projet (.csproj)." />
+    <Warning Condition="'$(OpenAiModel)' == ''" Text="OpenAiModel n'est pas défini dans le fichier projet (.csproj)." />
+
+    <ReadLinesFromFile File="$(ZipIndexFile)" Condition="Exists('$(ZipIndexFile)')">
+      <Output TaskParameter="Lines" ItemName="_PreviousZipIndex" />
+    </ReadLinesFromFile>
+
+    <PropertyGroup>
+      <PreviousZipIndex Condition="'@(_PreviousZipIndex)' == ''">0</PreviousZipIndex>
+      <PreviousZipIndex Condition="'@(_PreviousZipIndex)' != ''">@(_PreviousZipIndex->'%(Identity)')</PreviousZipIndex>
+      <NextZipIndex>$([MSBuild]::Add($(PreviousZipIndex), 1))</NextZipIndex>
+      <ReleaseZipFile>$(ArtifactsDir)$(AssemblyName)-$(Configuration)-$(TargetFramework)-$(NextZipIndex).zip</ReleaseZipFile>
+    </PropertyGroup>
+
+    <ZipDirectory SourceDirectory="$(TargetDir)" DestinationFile="$(ReleaseZipFile)" Overwrite="true" />
+    <WriteLinesToFile File="$(ZipIndexFile)" Lines="$(NextZipIndex)" Overwrite="true" />
+    <Message Importance="high" Text="ZIP package generated: $(ReleaseZipFile)" />
+    <Exec Command="explorer &quot;$(ArtifactsDir)&quot;" Condition="'$(OS)' == 'Windows_NT'" IgnoreExitCode="true" />
+  </Target>
+
+</Project>

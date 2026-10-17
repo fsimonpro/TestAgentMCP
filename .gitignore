@@ -1,0 +1,14 @@
+TestAgentMCP/.vs/CopilotSnapshots/
+TestAgentMCP/.vs/TestAgentMCP/CopilotIndices/
+TestAgentMCP/obj/Debug/net10.0-windows/.NETCoreApp,Version=v10.0.AssemblyAttributes.cs
+TestAgentMCP/obj/
+TestAgentMCP/bin/
+TestAgentMCP/.vs/TestAgentMCP.slnx/FileContentIndex/
+TestAgentMCP/.vs/TestAgentMCP.slnx/copilot-chat/
+TestAgentMCP/.vs/TestAgentMCP.slnx/DesignTimeBuild/.dtbcache.v2
+TestAgentMCP/.vs/
+TestAgentMCP/artifacts/
+
+# Secrets locaux
+OpenAi.props
+**/OpenAi.props

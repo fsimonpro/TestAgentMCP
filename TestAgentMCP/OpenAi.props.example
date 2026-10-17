@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <OpenAiApiKey>__SET_OPENAI_API_KEY__</OpenAiApiKey>
+  </PropertyGroup>
+</Project>
