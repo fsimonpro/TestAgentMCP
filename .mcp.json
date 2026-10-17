@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "squares": {
+    "shapes": {
       "type": "http",
       "url": "http://localhost:3333/mcp"
     }

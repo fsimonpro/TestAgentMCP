@@ -14,7 +14,7 @@ namespace TestAgentMCP
         private readonly LocalMcpServer _mcpServer;
 		private SquareState? _draggedSquare;
 		private Point _dragOffset;
-		private Color? _selectedColor;
+		private Color _selectedColor = Color.Blue;
 
 		public MainForm()
 		{
@@ -35,6 +35,7 @@ namespace TestAgentMCP
 			btnAddLosange.Click += (_, _) => AddShape(Shape.Losange);
            btnClearAll.Click += btnClearAll_Click;
 			btnColor.Click += btnColor_Click;
+			btnColor.Paint += btnColor_Paint;
             chkDeleteMode.CheckedChanged += chkDeleteMode_CheckedChanged;
             MouseDown += MainForm_MouseDown;
 			MouseMove += MainForm_MouseMove;
@@ -73,7 +74,7 @@ namespace TestAgentMCP
 		{
 			var newId = _squares.Count == 0 ? 1 : _squares.Max(s => s.Id) + 1;
             var rect = GetRandomRectangle(_squares.Select(s => s.Bounds).ToList());
-			var color = _selectedColor ?? GetRandomColor();
+			var color = _selectedColor;
 
           _squares.Add(new SquareState(newId, rect, color, shape));
 			AppendStatus($"Forme {shape} #{newId} ajoutée en position aléatoire ({rect.X},{rect.Y}) avec couleur {ColorTranslator.ToHtml(color)}.");
@@ -149,11 +150,33 @@ namespace TestAgentMCP
            Invalidate();
 		}
 
+		private void btnColor_Paint(object? sender, PaintEventArgs e)
+		{
+			var g = e.Graphics;
+			g.SmoothingMode = SmoothingMode.AntiAlias;
+			var h = btnColor.Height;
+
+			// Pipette: embout en bas à gauche, bulbe en haut à droite
+			using (var bulb = new Pen(Color.DimGray, 6) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+			using (var tube = new Pen(Color.Black, 3) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+			{
+				g.DrawLine(tube, 6, h - 8, 17, 14);
+				g.DrawLine(bulb, 17, 14, 22, 8);
+			}
+
+			// Carré de la couleur en cours
+			var swatch = new Rectangle(btnColor.Width - 24, (h - 18) / 2, 18, 18);
+			using var fill = new SolidBrush(_selectedColor);
+			g.FillRectangle(fill, swatch);
+
+			g.DrawRectangle(Pens.Black, swatch);
+		}
+
 		private void btnColor_Click(object? sender, EventArgs e)
 		{
 			using var colorDialog = new ColorDialog
 			{
-				Color = _selectedColor ?? Color.Red,
+				Color = _selectedColor,
 				FullOpen = true
 			};
 
@@ -163,8 +186,7 @@ namespace TestAgentMCP
 			}
 
 			_selectedColor = colorDialog.Color;
-			btnColor.BackColor = colorDialog.Color;
-			btnColor.ForeColor = colorDialog.Color.GetBrightness() > 0.5f ? Color.Black : Color.White;
+			btnColor.Invalidate();
 			AppendStatus($"Couleur des prochaines formes: {ColorTranslator.ToHtml(colorDialog.Color)}.");
 			LogLine("COLOR_SELECT", $"Color={ColorTranslator.ToHtml(colorDialog.Color)}");
 		}

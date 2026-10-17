@@ -131,7 +131,6 @@
 			btnColor.Name = "btnColor";
 			btnColor.Size = new Size(56, 34);
 			btnColor.TabIndex = 5;
-			btnColor.Text = "Color";
 			btnColor.UseVisualStyleBackColor = true;
 			// 
 			// btnAddSquare

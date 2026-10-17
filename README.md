@@ -13,7 +13,7 @@ Outils :
 Connexion depuis Claude Code (app lancée) :
 
 ```bash
-claude mcp add --transport http squares http://localhost:3333/mcp
+claude mcp add --transport http shapes http://localhost:3333/mcp
 ```
 
 Le fichier `.mcp.json` à la racine fait la même chose pour ce projet.
