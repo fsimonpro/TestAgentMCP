@@ -114,7 +114,7 @@ namespace TestAgentMCP
 		/// Remplace l'animation (2 à 50 frames). Chaque frame est appliquée en "Update" sur la précédente ;
 		/// la première part de l'état courant. 0 frame supprime l'animation, 1 frame est une simple mise à jour.
 		/// </summary>
-		private void ApplyAnimation(LocalMcpServer.AnimationRequest request)
+		private void ApplyAnimation(AnimationRequest request)
 		{
 			var frames = request.Frames ?? [];
 			if (frames.Count > MaxFrames)

@@ -6,19 +6,19 @@ using System.Text.Json.Nodes;
 namespace TestAgentMCP
 {
 	/// <summary>
-	/// Expose un <see cref="LocalMcpServer"/> en MCP "Streamable HTTP" (JSON-RPC sur POST /mcp, réponses JSON),
+	/// Expose un <see cref="McpServer"/> en MCP "Streamable HTTP" (JSON-RPC sur POST /mcp, réponses JSON),
 	/// accessible uniquement depuis la machine locale.
 	/// </summary>
 	internal sealed class HttpMcpHost : IDisposable
 	{
 		private static readonly string[] SupportedVersions = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
-		private readonly LocalMcpServer _server;
+		private readonly McpServer _server;
 		private readonly Action<string> _log;
 		private readonly HttpListener _listener = new();
 		private readonly CancellationTokenSource _cts = new();
 
-		public HttpMcpHost(LocalMcpServer server, int port, Action<string> log)
+		public HttpMcpHost(McpServer server, int port, Action<string> log)
 		{
 			_server = server;
 			_log = log;
@@ -150,9 +150,9 @@ namespace TestAgentMCP
 						["result"] = new JsonObject
 						{
 							["protocolVersion"] = version,
-							["capabilities"] = new JsonObject { ["tools"] = new JsonObject() },
+							["capabilities"] = new JsonObject { ["tools"] = new JsonObject(), ["resources"] = new JsonObject() },
 							["serverInfo"] = new JsonObject { ["name"] = "TestAgentMCP", ["version"] = "1.0.0" },
-							["instructions"] = "Canvas de formes (carrés, cercles, losanges). Appelle get_canvas_state pour lire l'état, puis apply_square_updates pour ajouter, modifier ou supprimer des formes."
+							["instructions"] = McpDocs.Instructions
 						}
 					}.ToJsonString();
 				case "ping":

@@ -44,5 +44,5 @@ Fermer l'app avant de compiler, sinon l'exe est verrouillé.
 
 - `Forms/MainForm.cs` : UI et état des formes ; `Forms/MainForm.Designer.cs` : tous les contrôles (vue Conception de Visual Studio).
 - `Forms/MainForm.Animation.cs`, `Forms/MainForm.Presets.cs` : logique de l'animation et des presets.
-- `Mcp/LocalMcpProtocol.cs` : outils MCP ; `Mcp/HttpMcpHost.cs` : transport HTTP.
+- `Mcp/Common/` : `McpServer` (outils, resources, `get_help`), `McpToolDefinitions`, `CanvasModels`, `McpDocs` ; `Mcp/Local/` : `LocalMcpClient` + `LocalMcpTransport` (agent OpenAI) ; `Mcp/Remote/HttpMcpHost.cs` : transport HTTP.
 - `Agent/AgentMCP.cs` : agent OpenAI.

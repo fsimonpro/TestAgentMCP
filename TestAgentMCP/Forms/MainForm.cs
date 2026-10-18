@@ -11,7 +11,7 @@ namespace TestAgentMCP
 		private readonly List<SquareState> _squares = new();
 		private readonly string _logFilePath;
 		private readonly object _logLock = new();
-        private readonly LocalMcpServer _mcpServer;
+		private readonly McpServer _mcpServer;
 		private SquareState? _draggedSquare;
 		private Point _dragOffset;
 		private Color _selectedColor = Color.Blue;
@@ -21,33 +21,33 @@ namespace TestAgentMCP
 			InitializeComponent();
 			WireAnimationEvents();
 			DoubleBuffered = true;
-            _mcpServer = new LocalMcpServer(BuildCanvasState, ApplyAgentResultFromMcp);
+			_mcpServer = new McpServer(BuildCanvasState, ApplyAgentResultFromMcp);
 			_agent = new AgentMCP(
-               ProjectSettings.OpenAiApiKey,
-              new LocalMcpClient(new InMemoryMcpTransport(_mcpServer)),
+			   ProjectSettings.OpenAiApiKey,
+			  new LocalMcpClient(new LocalMcpTransport(_mcpServer)),
 				message => LogLine("AGENT_PROMPT", message));
 			_logFilePath = Path.Combine(AppContext.BaseDirectory, "output.log");
 			LogLine("APP", "Application démarrée.");
 			InitializeSquares();
 			btnApplyPrompt.Click += btnApplyPrompt_Click;
 			btnOpenLog.Click += btnOpenLog_Click;
-           btnAddSquare.Click += (_, _) => AddShape(Shape.Square);
+			btnAddSquare.Click += (_, _) => AddShape(Shape.Square);
 			btnAddCircle.Click += (_, _) => AddShape(Shape.Circle);
 			btnAddLosange.Click += (_, _) => AddShape(Shape.Losange);
-           btnClearAll.Click += btnClearAll_Click;
+			btnClearAll.Click += btnClearAll_Click;
 			btnColor.Click += btnColor_Click;
 			btnColor.Paint += btnColor_Paint;
 			mnuSavePreset.Click += (_, _) => SavePreset();
 			mnuLoadPreset.Click += (_, _) => LoadPreset();
-            chkDeleteMode.CheckedChanged += chkDeleteMode_CheckedChanged;
-            MouseDown += MainForm_MouseDown;
+			chkDeleteMode.CheckedChanged += chkDeleteMode_CheckedChanged;
+			MouseDown += MainForm_MouseDown;
 			MouseMove += MainForm_MouseMove;
 			MouseUp += MainForm_MouseUp;
 			Shown += (_, _) => StartHttpMcpServer();
 			FormClosed += (_, _) => _httpMcpHost?.Dispose();
 			SetStatus(_agent.IsConfigured
 				? "Agent prêt. Saisis un prompt puis clique sur Envoyer."
-              : "Clé manquante: configure OpenAiApiKey dans le fichier projet (.csproj).");
+			  : "Clé manquante: configure OpenAiApiKey dans le fichier projet (.csproj).");
 		}
 
 		// Les appels MCP rapprochés (animation) sont regroupés en une seule ligne de log.
@@ -78,8 +78,8 @@ namespace TestAgentMCP
 		private void StartHttpMcpServer()
 		{
 			// Les requêtes HTTP arrivent sur des threads du pool : on les marshale sur le thread UI.
-			var httpServer = new LocalMcpServer(
-				() => (LocalMcpServer.CanvasState)Invoke(() =>
+			var httpServer = new McpServer(
+				() => (CanvasState)Invoke(() =>
 				{
 					RecordMcpCall("get_canvas_state");
 					return BuildCanvasState();
@@ -108,14 +108,14 @@ namespace TestAgentMCP
 			}
 		}
 
-        private void AddShape(Shape shape)
+		private void AddShape(Shape shape)
 		{
 			PushUndo();
 			var newId = NextShapeId();
-            var rect = GetRandomRectangle(_squares.Select(s => s.Bounds).ToList());
+			var rect = GetRandomRectangle(_squares.Select(s => s.Bounds).ToList());
 			var color = _selectedColor;
 
-          _squares.Add(new SquareState(newId, rect, color, shape));
+			_squares.Add(new SquareState(newId, rect, color, shape));
 			AppendStatus($"Forme {shape} #{newId} ajoutée en position aléatoire ({rect.X},{rect.Y}) avec couleur {ColorTranslator.ToHtml(color)}.");
 			LogLine("ADD", $"SquareId={newId};Shape={shape};X={rect.X};Y={rect.Y};Size={rect.Width};Color={ColorTranslator.ToHtml(color)}");
 			Invalidate();
@@ -128,7 +128,7 @@ namespace TestAgentMCP
 				return;
 			}
 
-            var selectedSquare = _squares.LastOrDefault(square => IsPointInsideShape(square, e.Location));
+			var selectedSquare = _squares.LastOrDefault(square => IsPointInsideShape(square, e.Location));
 
 			if (e.Button == MouseButtons.Right)
 			{
@@ -189,13 +189,13 @@ namespace TestAgentMCP
 				_draggedSquare = null;
 				AppendStatus("Mode suppression activé: clic sur un carré pour le supprimer.");
 				LogLine("MODE", "DeleteMode=On");
-             Invalidate();
+				Invalidate();
 				return;
 			}
 
 			AppendStatus("Mode suppression désactivé.");
 			LogLine("MODE", "DeleteMode=Off");
-           Invalidate();
+			Invalidate();
 		}
 
 		private void btnColor_Paint(object? sender, PaintEventArgs e)
@@ -333,7 +333,7 @@ namespace TestAgentMCP
 		{
 			if (!_agent.IsConfigured)
 			{
-              SetStatus("Clé API absente. Ajoute OpenAiApiKey dans le .csproj puis redémarre l'application.");
+				SetStatus("Clé API absente. Ajoute OpenAiApiKey dans le .csproj puis redémarre l'application.");
 				return;
 			}
 
@@ -351,13 +351,13 @@ namespace TestAgentMCP
 
 			try
 			{
-                AppendStatus($"Etat courant envoyé à l'agent via MCP ({_squares.Count} carré(s)).");
+				AppendStatus($"Etat courant envoyé à l'agent via MCP ({_squares.Count} carré(s)).");
 				AppendStatus("Appel du modèle OpenAI en cours...");
 
-                var result = await _agent.GetActionAsync(prompt);
+				var result = await _agent.GetActionAsync(prompt);
 				LogLine("PROMPT_RESULT", System.Text.Json.JsonSerializer.Serialize(result));
 				AppendStatus($"Réponse reçue. Action: {result.Action ?? "(vide)"}. Mises à jour: {result.Infos.Count}.");
-              AppendStatus("Mise à jour appliquée par MCP.");
+				AppendStatus("Mise à jour appliquée par MCP.");
 				AppendStatus(result.Message ?? "Action appliquée.");
 				AppendStatus("Rendu terminé.");
 				txtPrompt.Text = string.Empty;
@@ -373,10 +373,10 @@ namespace TestAgentMCP
 			}
 		}
 
-		private LocalMcpServer.CanvasState BuildCanvasState()
+		private CanvasState BuildCanvasState()
 		{
 			var area = GetDrawingArea();
-			return new LocalMcpServer.CanvasState
+			return new CanvasState
 			{
 				ClientWidth = ClientSize.Width,
 				ClientHeight = ClientSize.Height,
@@ -389,13 +389,13 @@ namespace TestAgentMCP
 				IsPlaying = IsPlaying,
 				Fps = _fps,
 				Squares = _squares
-					.Select(square => new LocalMcpServer.CanvasSquare
+					.Select(square => new CanvasSquare
 					{
 						Id = square.Id,
 						X = square.Bounds.X,
 						Y = square.Bounds.Y,
 						Size = square.Bounds.Width,
-                        Color = ColorTranslator.ToHtml(square.Color),
+						Color = ColorTranslator.ToHtml(square.Color),
 						Shape = square.Shape.ToString()
 					})
 					.ToList()
@@ -423,11 +423,11 @@ namespace TestAgentMCP
 			foreach (var square in _squares)
 			{
 				using var brush = new SolidBrush(square.Color);
-             DrawShape(e.Graphics, brush, square);
+				DrawShape(e.Graphics, brush, square);
 
 				if (chkDeleteMode.Checked)
 				{
-                  DrawShapeOutline(e.Graphics, deleteModePen, square);
+					DrawShapeOutline(e.Graphics, deleteModePen, square);
 				}
 			}
 
@@ -439,7 +439,7 @@ namespace TestAgentMCP
 			var area = GetDrawingArea();
 			var baseY = area.Top + 20;
 
-            _squares.Add(new SquareState(1, new Rectangle(40, baseY, DefaultSquareSize, DefaultSquareSize), Color.Red, Shape.Square));
+			_squares.Add(new SquareState(1, new Rectangle(40, baseY, DefaultSquareSize, DefaultSquareSize), Color.Red, Shape.Square));
 			_squares.Add(new SquareState(2, new Rectangle(140, baseY + 80, DefaultSquareSize, DefaultSquareSize), Color.Green, Shape.Circle));
 			_squares.Add(new SquareState(3, new Rectangle(260, baseY + 40, DefaultSquareSize, DefaultSquareSize), Color.Blue, Shape.Losange));
 
@@ -477,7 +477,7 @@ namespace TestAgentMCP
 			var top = txtStatus.Bottom + 12;
 			var playerHeight = pnlPlayer.Visible ? PlayerHeight : 0;
 			var height = Math.Max(1, ClientSize.Height - top - 12 - playerHeight);
-         var rightLimit = pnlToolbar.Left - 6;
+			var rightLimit = pnlToolbar.Left - 6;
 			var width = Math.Max(1, rightLimit);
 			return new Rectangle(0, top, width, height);
 		}
@@ -515,7 +515,7 @@ namespace TestAgentMCP
 			}
 		}
 
-      private void ApplyAgentResult(AgentMCP.AgentResult result)
+		private void ApplyAgentResult(AgentMCP.AgentResult result)
 		{
 			if (result.Action != null && result.Action.Equals("Remove", StringComparison.InvariantCultureIgnoreCase))
 			{
@@ -532,14 +532,14 @@ namespace TestAgentMCP
 
 			if (result.Action != null && result.Action.Equals("Add", StringComparison.InvariantCultureIgnoreCase))
 			{
-					var nextId = Math.Max(result.Infos.Select(s => s.Id).DefaultIfEmpty(0).Max(), NextShapeId() - 1) + 1;
-					foreach (var info in result.Infos)
+				var nextId = Math.Max(result.Infos.Select(s => s.Id).DefaultIfEmpty(0).Max(), NextShapeId() - 1) + 1;
+				foreach (var info in result.Infos)
+				{
+					if (info.Id <= 0 || _squares.Any(s => s.Id == info.Id))
 					{
-						if (info.Id <= 0 || _squares.Any(s => s.Id == info.Id))
-						{
-							info.Id = nextId++;
-						}
+						info.Id = nextId++;
 					}
+				}
 			}
 
 			foreach (var info in result.Infos)
@@ -548,7 +548,7 @@ namespace TestAgentMCP
 				if (square == null)
 				{
 					txtStatus.AppendText(Environment.NewLine + $"Carré avec Id {info.Id} non trouvé, création d'un nouveau carré.");
-                 square = new SquareState(info.Id, GetRandomRectangle(_squares.Select(s => s.Bounds).ToList()), Color.Gray, Shape.Square);
+					square = new SquareState(info.Id, GetRandomRectangle(_squares.Select(s => s.Bounds).ToList()), Color.Gray, Shape.Square);
 					_squares.Add(square);
 				}
 
@@ -671,13 +671,17 @@ namespace TestAgentMCP
 			}
 		}
 
-     private sealed class SquareState(int Id, Rectangle bounds, Color color, Shape shape)
+		private sealed class SquareState(int Id, Rectangle bounds, Color color, Shape shape)
 		{
 			public int Id { get; } = Id;
 			public Rectangle Bounds { get; set; } = bounds;
 			public Color Color { get; set; } = color;
-           public Shape Shape { get; set; } = shape;
+			public Shape Shape { get; set; } = shape;
 		}
 
+		private void MainForm_Load(object sender, EventArgs e)
+		{
+
+		}
 	}
 }
