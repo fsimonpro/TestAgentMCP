@@ -30,6 +30,14 @@ Le fichier `.mcp.json` à la racine fait la même chose pour ce projet.
 
 Le dossier [`Presets/`](Presets/) contient des scènes animées : `dog.json`, `landscape.json`, `stonehenge.json`. Les copier dans `Documents\TestAgentMCP\Presets` pour les ouvrir depuis le menu Fichier.
 
+## Démo
+
+Ces deux animations ont été créées uniquement via des prompts MCP, « en aveugle » : le client (Claude Code / sous-agent `shapes-agent`) n'a ni accès au code ni aux fichiers de l'app et ne la connaît qu'à travers ce que le serveur MCP expose (outils, instructions et documentation).
+
+![Paysage (landscape)](docs/landscape.gif)
+
+![Coucher de soleil (sunset)](docs/sunset.gif)
+
 ## Clé OpenAI (agent par prompt)
 
 Copier `TestAgentMCP/OpenAi.props.example` vers `TestAgentMCP/OpenAi.props` (ignoré par git) et y mettre la clé.
