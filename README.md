@@ -40,6 +40,8 @@ Ces deux animations ont été créées uniquement via des prompts MCP, « en ave
 
 ## Clé OpenAI (agent par prompt)
 
+Le modèle (défaut `gpt-4.1`) se choisit dans la liste à côté du prompt et est mémorisé dans `%LocalAppData%TestAgentMCPmodel.txt`.
+
 La clé n'est jamais embarquée dans la build. Au premier prompt, l'app la demande puis la stocke chiffrée (DPAPI, compte Windows courant) dans `%LocalAppData%\TestAgentMCP\openai.key` ; la variable `OPENAI_API_KEY` est aussi lue. Une clé refusée (401) est supprimée et redemandée.
 
 ## Développement
@@ -53,4 +55,4 @@ Fermer l'app avant de compiler, sinon l'exe est verrouillé.
 - `Forms/MainForm.cs` : UI et état des formes ; `Forms/MainForm.Designer.cs` : tous les contrôles (vue Conception de Visual Studio).
 - `Forms/MainForm.Animation.cs`, `Forms/MainForm.Presets.cs` : logique de l'animation et des presets.
 - `Mcp/Common/` : `McpServer` (outils, resources, `get_help`), `McpToolDefinitions`, `CanvasModels`, `McpDocs` ; `Mcp/Local/` : `LocalMcpClient` + `LocalMcpTransport` (agent OpenAI) ; `Mcp/Remote/HttpMcpHost.cs` : transport HTTP.
-- `Agent/AgentMCP.cs` : agent OpenAI.
+- `Agent/AgentMCP.cs` : agent OpenAI en function calling. Il reçoit les `instructions` et les outils du serveur MCP (initialize + tools/list via le client local), les appelle lui-même (get_canvas_state, apply_square_updates, set_animation, get_help) : mêmes capacités et même doc qu'un client MCP externe.

@@ -30,6 +30,7 @@
 		{
 			components = new System.ComponentModel.Container();
 			txtPrompt = new TextBox();
+			cmbModel = new ComboBox();
 			btnApplyPrompt = new Button();
 			btnOpenLog = new Button();
 			pnlToolbar = new Panel();
@@ -55,6 +56,7 @@
 			playTimer = new System.Windows.Forms.Timer(components);
 			toolTip = new ToolTip(components);
 			toolTip.SetToolTip(btnApplyPrompt, "Envoyer le prompt à l'agent OpenAI (Entrée)");
+			toolTip.SetToolTip(cmbModel, "Modèle OpenAI utilisé par l'agent (mémorisé pour le prochain lancement)");
 			toolTip.SetToolTip(btnOpenLog, "Ouvrir le fichier de log");
 			toolTip.SetToolTip(btnClearAll, "Supprimer toutes les formes");
 			toolTip.SetToolTip(btnColor, "Choisir la couleur des formes");
@@ -78,8 +80,17 @@
 			txtPrompt.Location = new Point(12, 40);
 			txtPrompt.Name = "txtPrompt";
 			txtPrompt.PlaceholderText = "Ex: mets le carré rouge en bas à droite, et le bleu en jaune";
-			txtPrompt.Size = new Size(796, 27);
+			txtPrompt.Size = new Size(640, 27);
 			txtPrompt.TabIndex = 0;
+			// 
+			// cmbModel
+			// 
+			cmbModel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+			cmbModel.Items.AddRange(new object[] { "gpt-4.1", "gpt-4.1-mini", "gpt-5", "gpt-5-mini", "gpt-4o", "gpt-4o-mini" });
+			cmbModel.Location = new Point(658, 40);
+			cmbModel.Name = "cmbModel";
+			cmbModel.Size = new Size(150, 28);
+			cmbModel.TabIndex = 3;
 			// 
 			// btnApplyPrompt
 			// 
@@ -180,7 +191,7 @@
 			txtStatus.Name = "txtStatus";
 			txtStatus.ReadOnly = true;
 			txtStatus.ScrollBars = ScrollBars.Vertical;
-			txtStatus.Size = new Size(932, 56);
+			txtStatus.Size = new Size(932, 76);
 			txtStatus.TabIndex = 3;
 			// 
 			// menuStrip
@@ -236,7 +247,7 @@
 			pnlPlayer.Controls.Add(lblFrame);
 			pnlPlayer.Controls.Add(btnAddFrame);
 			pnlPlayer.Controls.Add(btnDeleteFrame);
-			pnlPlayer.Location = new Point(0, 724);
+			pnlPlayer.Location = new Point(0, 744);
 			pnlPlayer.Name = "pnlPlayer";
 			pnlPlayer.Size = new Size(952, 44);
 			pnlPlayer.TabIndex = 6;
@@ -298,12 +309,13 @@
 			AcceptButton = btnApplyPrompt;
 			AutoScaleDimensions = new SizeF(8F, 20F);
 			AutoScaleMode = AutoScaleMode.Font;
-			ClientSize = new Size(1024, 768);
+			ClientSize = new Size(1024, 788);
 			Controls.Add(pnlPlayer);
 			Controls.Add(pnlToolbar);
 			Controls.Add(txtStatus);
 			Controls.Add(btnOpenLog);
 			Controls.Add(btnApplyPrompt);
+			Controls.Add(cmbModel);
 			Controls.Add(txtPrompt);
 			Controls.Add(menuStrip);
 			FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -324,6 +336,7 @@
 		#endregion
 
 		private TextBox txtPrompt;
+		private ComboBox cmbModel;
 		private Button btnApplyPrompt;
        private Button btnOpenLog;
 		private TextBox txtStatus;

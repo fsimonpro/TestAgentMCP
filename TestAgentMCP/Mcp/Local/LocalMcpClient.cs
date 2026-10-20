@@ -2,13 +2,14 @@ using System.Text.Json;
 
 namespace TestAgentMCP
 {
+	/// <summary>Client MCP en mémoire : mêmes méthodes (initialize, tools/list, tools/call) qu'un client externe.</summary>
 	internal sealed class LocalMcpClient(ILocalMcpTransport transport)
 	{
 		private readonly ILocalMcpTransport _transport = transport;
-		private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 		private int _nextId = 1;
 
-		public async Task InitializeAsync(CancellationToken cancellationToken = default)
+		/// <summary>Initialise la session et retourne les `instructions` du serveur.</summary>
+		public async Task<string> InitializeAsync(CancellationToken cancellationToken = default)
 		{
 			var payload = new
 			{
@@ -22,52 +23,43 @@ namespace TestAgentMCP
 				}
 			};
 
-			await SendAsync(payload, cancellationToken);
-		}
-
-		public async Task<string> GetCanvasStateAsync(CancellationToken cancellationToken = default)
-		{
-			var payload = new
-			{
-				jsonrpc = "2.0",
-				id = _nextId++,
-				method = "tools/call",
-				paramsObj = new
-				{
-					name = "get_canvas_state",
-					arguments = new { }
-				}
-			};
-
 			using var response = await SendAsync(payload, cancellationToken);
-			var content = response.RootElement.GetProperty("result").GetProperty("content");
-			if (content.ValueKind != JsonValueKind.Array || content.GetArrayLength() == 0)
-			{
-				throw new InvalidOperationException("Réponse MCP invalide pour get_canvas_state.");
-			}
-
-			return content[0].GetProperty("text").GetString() ?? "{}";
+			var result = response.RootElement.GetProperty("result");
+			return result.TryGetProperty("instructions", out var instructions) ? instructions.GetString() ?? string.Empty : string.Empty;
 		}
 
-		public async Task ApplySquareUpdatesAsync(AgentMCP.AgentResult result, CancellationToken cancellationToken = default)
+		/// <summary>Retourne le tableau JSON `tools` de tools/list (name, description, inputSchema).</summary>
+		public async Task<JsonElement> ListToolsAsync(CancellationToken cancellationToken = default)
 		{
+			var payload = new { jsonrpc = "2.0", id = _nextId++, method = "tools/list" };
+			using var response = await SendAsync(payload, cancellationToken);
+			return response.RootElement.GetProperty("result").GetProperty("tools").Clone();
+		}
+
+		/// <summary>Appelle un outil et retourne son texte. Une erreur MCP est renvoyée en texte pour que le modèle puisse corriger.</summary>
+		public async Task<string> CallToolAsync(string name, string argumentsJson, CancellationToken cancellationToken = default)
+		{
+			using var arguments = JsonDocument.Parse(string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson);
 			var payload = new
 			{
 				jsonrpc = "2.0",
 				id = _nextId++,
 				method = "tools/call",
-				paramsObj = new
-				{
-					name = "apply_square_updates",
-					arguments = new
-					{
-						action = result.Action,
-						infos = result.Infos
-					}
-				}
+				paramsObj = new { name, arguments = arguments.RootElement }
 			};
 
-			await SendAsync(payload, cancellationToken);
+			try
+			{
+				using var response = await SendAsync(payload, cancellationToken);
+				var content = response.RootElement.GetProperty("result").GetProperty("content");
+				return content.ValueKind == JsonValueKind.Array && content.GetArrayLength() > 0
+					? content[0].GetProperty("text").GetString() ?? string.Empty
+					: string.Empty;
+			}
+			catch (InvalidOperationException ex)
+			{
+				return ex.Message;
+			}
 		}
 
 		private async Task<JsonDocument> SendAsync(object payload, CancellationToken cancellationToken)
@@ -78,7 +70,9 @@ namespace TestAgentMCP
 
 			if (response.RootElement.TryGetProperty("error", out var errorElement))
 			{
-				throw new InvalidOperationException($"Erreur MCP: {errorElement.GetProperty("message").GetString()}");
+				var message = errorElement.GetProperty("message").GetString();
+				response.Dispose();
+				throw new InvalidOperationException($"Erreur MCP: {message}");
 			}
 
 			return response;

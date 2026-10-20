@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <OpenAiModel>gpt-4o-mini</OpenAiModel>
+    <OpenAiModel>gpt-4.1</OpenAiModel>
   </PropertyGroup>
 
   <PropertyGroup>

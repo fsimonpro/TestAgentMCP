@@ -21,11 +21,19 @@ namespace TestAgentMCP
 			InitializeComponent();
 			WireAnimationEvents();
 			DoubleBuffered = true;
-			_mcpServer = new McpServer(BuildCanvasState, ApplyAgentResultFromMcp);
+			_mcpServer = new McpServer(BuildCanvasState, ApplyAgentResultFromMcp, ApplyAnimation);
 			_agent = new AgentMCP(
 			   ApiKeyStore.Load() ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY"),
 			  new LocalMcpClient(new LocalMcpTransport(_mcpServer)),
 				message => LogLine("AGENT_PROMPT", message));
+			_agent.ToolCalled = call =>
+			{
+				LogLine("AGENT_TOOL", call);
+				AppendStatus($"Outil MCP : {call}");
+			};
+			cmbModel.Text = ProjectSettings.OpenAiModel;
+			cmbModel.SelectionChangeCommitted += (_, _) => ApplyModel(cmbModel.SelectedItem?.ToString());
+			cmbModel.Leave += (_, _) => ApplyModel(cmbModel.Text);
 			_logFilePath = Path.Combine(AppContext.BaseDirectory, "output.log");
 			LogLine("APP", "Application démarrée.");
 			InitializeSquares();
@@ -352,6 +360,19 @@ namespace TestAgentMCP
 			return _agent.IsConfigured;
 		}
 
+		private void ApplyModel(string? model)
+		{
+			if (string.IsNullOrWhiteSpace(model))
+			{
+				cmbModel.Text = ProjectSettings.OpenAiModel;
+				return;
+			}
+
+			_agent.SetModel(model);
+			LogLine("MODEL", model);
+			ProjectSettings.SaveModel(model);
+		}
+
 		private async void btnApplyPrompt_Click(object? sender, EventArgs e)
 		{
 			var prompt = txtPrompt.Text.Trim();
@@ -361,6 +382,7 @@ namespace TestAgentMCP
 				return;
 			}
 
+			ApplyModel(cmbModel.Text);
 			if (!EnsureApiKey())
 			{
 				SetStatus("Clé API OpenAI absente : prompt non envoyé.");
@@ -374,19 +396,16 @@ namespace TestAgentMCP
 
 			try
 			{
-				AppendStatus($"Etat courant envoyé à l'agent via MCP ({_squares.Count} carré(s)).");
-				AppendStatus("Appel du modèle OpenAI en cours...");
+				AppendStatus("Appel du modèle OpenAI en cours (outils MCP)...");
 
-				var result = await _agent.GetActionAsync(prompt);
-				LogLine("PROMPT_RESULT", System.Text.Json.JsonSerializer.Serialize(result));
-				AppendStatus($"Réponse reçue. Action: {result.Action ?? "(vide)"}. Mises à jour: {result.Infos.Count}.");
-				AppendStatus("Mise à jour appliquée par MCP.");
-				AppendStatus(result.Message ?? "Action appliquée.");
-				AppendStatus("Rendu terminé.");
+				var message = await _agent.RunAsync(prompt);
+				LogLine("PROMPT_RESULT", message);
+				AppendStatus(message);
 				txtPrompt.Text = string.Empty;
 			}
 			catch (Exception ex)
 			{
+				_agent.ResetThread();
 				AppendStatus($"Erreur agent: {ex.Message}");
 				if (ex.Message.Contains(" 401 ") || ex.Message.Contains(": 401"))
 				{

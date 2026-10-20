@@ -9,17 +9,29 @@ namespace TestAgentMCP
 		private const string OpenAiEndpoint = "https://api.openai.com/v1/responses";
 		private readonly HttpClient _httpClient;
 		private string? _apiKey;
-		private readonly string _model;
+		private string _model;
 		private readonly LocalMcpClient _mcpClient;
 		private readonly Action<string>? _logger;
 		private string? _lastResponseId;
-		private bool _mcpInitialized;
+		private string? _instructions;
+		private List<Dictionary<string, object?>>? _tools;
+		private const int MaxToolSteps = 12;
+
+		private const string AgentGuidance = """
+			Tu pilotes le canvas uniquement avec ces outils.
+			Méthode pour toute demande de dessin (ex. « dessine un chat ») :
+			1. Appelle get_canvas_state (zone de dessin, formes existantes) et get_help("examples") si tu n'as pas d'exemple en tête.
+			2. Planifie AVANT d'agir : décompose le sujet en 10 à 25 formes simples (tête, oreilles, yeux, museau, corps, pattes, queue…), choisis pour chacune la forme (Square/Circle/Losange), la couleur, la taille et des coordonnées précises à l'intérieur de la zone de dessin. Les parties doivent se toucher ou se chevaucher : ne les laisse pas flotter.
+			3. Ajoute toutes les formes en UN SEUL appel apply_square_updates (action Add), du fond vers l'avant (corps d'abord, détails ensuite).
+			4. Relis le résultat avec get_canvas_state, vérifie les positions et corrige avec Update si besoin.
+			5. Pour une animation, utilise set_animation en ne listant que ce qui change.
+			Quand c'est terminé, réponds par une courte phrase en français.
+			""";
 
 		public AgentMCP(string? apiKey, LocalMcpClient mcpClient, Action<string>? logger = null, HttpClient? httpClient = null)
 		{
 			_apiKey = apiKey;
-		//	_apiKey = "";
-			_httpClient = httpClient ?? new HttpClient();
+			_httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
 			_mcpClient = mcpClient;
 			_logger = logger;
 			_model = ProjectSettings.OpenAiModel;
@@ -29,76 +41,111 @@ namespace TestAgentMCP
 
 		public void SetApiKey(string? apiKey) => _apiKey = apiKey?.Trim();
 
-		public async Task<AgentResult> GetActionAsync(string userPrompt, CancellationToken cancellationToken = default)
+		public void SetModel(string model) => _model = model.Trim();
+
+		/// <summary>Appelé à chaque outil MCP invoqué par le modèle (nom + arguments), pour l'afficher à l'utilisateur.</summary>
+		public Action<string>? ToolCalled { get; set; }
+
+		/// <summary>
+		/// Boucle agent : le modèle reçoit les mêmes `instructions` et les mêmes outils MCP qu'un client externe
+		/// (tools/list), les appelle lui-même via le client MCP local, puis conclut par un court message.
+		/// </summary>
+		public async Task<string> RunAsync(string userPrompt, CancellationToken cancellationToken = default)
 		{
 			if (!IsConfigured)
 			{
 				throw new InvalidOperationException("La clé API OpenAI est manquante.");
 			}
 
-			if (!_mcpInitialized)
+			if (_tools is null)
 			{
-				await _mcpClient.InitializeAsync(cancellationToken);
-				_mcpInitialized = true;
+				_instructions = await _mcpClient.InitializeAsync(cancellationToken);
+				_tools = (await _mcpClient.ListToolsAsync(cancellationToken)).EnumerateArray()
+					.Select(tool => new Dictionary<string, object?>
+					{
+						["type"] = "function",
+						["name"] = tool.GetProperty("name").GetString(),
+						["description"] = tool.GetProperty("description").GetString(),
+						["parameters"] = tool.GetProperty("inputSchema")
+					})
+					.ToList();
 			}
 
-			var stateJson = await _mcpClient.GetCanvasStateAsync(cancellationToken);
-			var inputText = $"Réponds en json strict uniquement. Etat actuel: {stateJson}\\nPrompt utilisateur: {userPrompt}";
-			_logger?.Invoke($"Prompt envoyé au modèle: {inputText}");
+			_logger?.Invoke($"Prompt envoyé au modèle: {userPrompt}");
 
-			var requestPayload = new Dictionary<string, object?>
+			object input = userPrompt;
+			for (var step = 0; step < MaxToolSteps; step++)
 			{
-				["model"] = _model,
-				["temperature"] = 0.1,
-                ["instructions"] = "Tu es un agent qui pilote des formes dans un formulaire WinForms. Réponds STRICTEMENT en JSON avec: action ('remove', 'add' ou 'update'), message (string), infos (tableau). Chaque info contient: id (int), x (int optionnel), y (int optionnel), size (int optionnel), color (string optionnel, format '#RRGGBB' ou nom de couleur), shape (string optionnel: 'Square', 'Circle', 'Losange'). N'envoie que les changements.",
-				["text"] = new { format = new { type = "json_object" } },
-				["input"] = inputText
-			};
+				var requestPayload = new Dictionary<string, object?>
+				{
+					["model"] = _model,
+					["instructions"] = $"{_instructions}\n\n{AgentGuidance}",
+					["tools"] = _tools,
+					["input"] = input
+				};
 
-			if (!string.IsNullOrWhiteSpace(_lastResponseId))
-			{
-				requestPayload["previous_response_id"] = _lastResponseId;
+				// Les modèles à raisonnement (gpt-5, o*) sont très lents par défaut : effort réduit.
+				if (_model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase) || _model.StartsWith("o", StringComparison.OrdinalIgnoreCase))
+				{
+					requestPayload["reasoning"] = new Dictionary<string, object?> { ["effort"] = "low" };
+				}
+
+				if (!string.IsNullOrWhiteSpace(_lastResponseId))
+				{
+					requestPayload["previous_response_id"] = _lastResponseId;
+				}
+
+				using var request = new HttpRequestMessage(HttpMethod.Post, OpenAiEndpoint);
+				request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+				request.Content = new StringContent(JsonSerializer.Serialize(requestPayload), Encoding.UTF8, "application/json");
+
+				using var response = await _httpClient.SendAsync(request, cancellationToken);
+				var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+
+				if (!response.IsSuccessStatusCode)
+				{
+					throw new InvalidOperationException($"Erreur OpenAI: {(int)response.StatusCode} - {responseText}");
+				}
+
+				using var responseDoc = JsonDocument.Parse(responseText);
+				var root = responseDoc.RootElement;
+				if (root.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String)
+				{
+					_lastResponseId = idElement.GetString();
+				}
+
+				var outputs = new List<object>();
+				if (root.TryGetProperty("output", out var output) && output.ValueKind == JsonValueKind.Array)
+				{
+					foreach (var item in output.EnumerateArray())
+					{
+						if (!item.TryGetProperty("type", out var type) || type.GetString() != "function_call")
+						{
+							continue;
+						}
+
+						var name = item.GetProperty("name").GetString() ?? string.Empty;
+						var arguments = item.TryGetProperty("arguments", out var args) ? args.GetString() ?? "{}" : "{}";
+						ToolCalled?.Invoke($"{name} {arguments}");
+						var toolResult = await _mcpClient.CallToolAsync(name, arguments, cancellationToken);
+						outputs.Add(new Dictionary<string, object?>
+						{
+							["type"] = "function_call_output",
+							["call_id"] = item.GetProperty("call_id").GetString(),
+							["output"] = toolResult
+						});
+					}
+				}
+
+				if (outputs.Count == 0)
+				{
+					return ExtractResponseText(root)?.Trim() ?? "Action appliquée.";
+				}
+
+				input = outputs;
 			}
 
-			using var request = new HttpRequestMessage(HttpMethod.Post, OpenAiEndpoint);
-			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-			request.Content = new StringContent(JsonSerializer.Serialize(requestPayload), Encoding.UTF8, "application/json");
-
-			using var response = await _httpClient.SendAsync(request, cancellationToken);
-			var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-
-			if (!response.IsSuccessStatusCode)
-			{
-				throw new InvalidOperationException($"Erreur OpenAI: {(int)response.StatusCode} - {responseText}");
-			}
-
-			using var responseDoc = JsonDocument.Parse(responseText);
-			var root = responseDoc.RootElement;
-			if (root.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String)
-			{
-				_lastResponseId = idElement.GetString();
-			}
-
-			var content = ExtractResponseText(root);
-
-			if (string.IsNullOrWhiteSpace(content))
-			{
-				throw new InvalidOperationException("Réponse OpenAI vide.");
-			}
-
-			var result = JsonSerializer.Deserialize<AgentResult>(ExtractJsonObject(content), new JsonSerializerOptions
-			{
-				PropertyNameCaseInsensitive = true
-			});
-
-			if (result is null)
-			{
-				throw new InvalidOperationException("Impossible de lire la réponse de l'agent.");
-			}
-
-			await _mcpClient.ApplySquareUpdatesAsync(result, cancellationToken);
-
-			return result;
+			throw new InvalidOperationException($"Trop d'appels d'outils ({MaxToolSteps}) sans réponse finale.");
 		}
 
 		public void ResetThread()
@@ -171,21 +218,6 @@ namespace TestAgentMCP
 
 			return null;
 		}
-
-		private static string ExtractJsonObject(string content)
-		{
-			var start = content.IndexOf('{');
-			var end = content.LastIndexOf('}');
-
-			if (start < 0 || end < 0 || end <= start)
-			{
-				throw new InvalidOperationException("Réponse JSON introuvable dans la sortie du modèle.");
-			}
-
-			return content[start..(end + 1)];
-		}
-
-        internal sealed record SquareInfo(int Id, int X, int Y, int Size, string Color, string Shape);
 
 		internal sealed class AgentResult
 		{
