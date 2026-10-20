@@ -29,7 +29,7 @@ dotnet build TestAgentMCP/TestAgentMCP.csproj
 Lire la fin de la sortie : erreurs et nombre d'avertissements. Si la build échoue :
 - `MSB3577` (deux `.resx` pour `MainForm`) : un partial `MainForm.*.cs` a généré un `.resx` associé. Supprimer ce `.resx` et ne pas ouvrir les partials en vue Conception (voir CLAUDE.md).
 - Fichier verrouillé : l'app ou VS tient encore l'exe, retour à l'étape 1.
-- Clé OpenAI absente : elle vient de `TestAgentMCP/OpenAi.props` (ignoré par git). Ne jamais la mettre dans le `.csproj` ni la committer.
+- Clé OpenAI : jamais dans la build ni dans le code ; l'app la demande au premier prompt et la stocke chiffrée (`ApiKeyStore`).
 
 ## 3. Relance
 ```powershell

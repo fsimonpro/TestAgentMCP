@@ -1,8 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Clé locale non versionnée : copier OpenAi.props.example vers OpenAi.props -->
-  <Import Project="OpenAi.props" Condition="Exists('OpenAi.props')" />
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -18,10 +15,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
-      <_Parameter1>OpenAiApiKey</_Parameter1>
-      <_Parameter2>$(OpenAiApiKey)</_Parameter2>
-    </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>OpenAiModel</_Parameter1>
       <_Parameter2>$(OpenAiModel)</_Parameter2>
@@ -40,7 +33,6 @@
 
   <Target Name="CreateReleaseZip" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
     <MakeDir Directories="$(ArtifactsDir)" />
-    <Warning Condition="'$(OpenAiApiKey)' == '' OR '$(OpenAiApiKey)' == '__SET_OPENAI_API_KEY__'" Text="OpenAiApiKey n'est pas défini dans le fichier projet (.csproj)." />
     <Warning Condition="'$(OpenAiModel)' == ''" Text="OpenAiModel n'est pas défini dans le fichier projet (.csproj)." />
 
     <ReadLinesFromFile File="$(ZipIndexFile)" Condition="Exists('$(ZipIndexFile)')">
@@ -57,7 +49,7 @@
     <ZipDirectory SourceDirectory="$(TargetDir)" DestinationFile="$(ReleaseZipFile)" Overwrite="true" />
     <WriteLinesToFile File="$(ZipIndexFile)" Lines="$(NextZipIndex)" Overwrite="true" />
     <Message Importance="high" Text="ZIP package generated: $(ReleaseZipFile)" />
-    <Exec Command="explorer &quot;$(ArtifactsDir)&quot;" Condition="'$(OS)' == 'Windows_NT'" IgnoreExitCode="true" />
+    <Exec Command="explorer &quot;$(ArtifactsDir)&quot;" Condition="'$(OS)' == 'Windows_NT' AND '$(NoExplorer)' != 'true'" IgnoreExitCode="true" />
   </Target>
 
 </Project>

@@ -23,12 +23,13 @@ namespace TestAgentMCP
 			DoubleBuffered = true;
 			_mcpServer = new McpServer(BuildCanvasState, ApplyAgentResultFromMcp);
 			_agent = new AgentMCP(
-			   ProjectSettings.OpenAiApiKey,
+			   ApiKeyStore.Load() ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY"),
 			  new LocalMcpClient(new LocalMcpTransport(_mcpServer)),
 				message => LogLine("AGENT_PROMPT", message));
 			_logFilePath = Path.Combine(AppContext.BaseDirectory, "output.log");
 			LogLine("APP", "Application démarrée.");
 			InitializeSquares();
+			RefreshPlayer();
 			btnApplyPrompt.Click += btnApplyPrompt_Click;
 			btnOpenLog.Click += btnOpenLog_Click;
 			btnAddSquare.Click += (_, _) => AddShape(Shape.Square);
@@ -47,7 +48,7 @@ namespace TestAgentMCP
 			FormClosed += (_, _) => _httpMcpHost?.Dispose();
 			SetStatus(_agent.IsConfigured
 				? "Agent prêt. Saisis un prompt puis clique sur Envoyer."
-			  : "Clé manquante: configure OpenAiApiKey dans le fichier projet (.csproj).");
+			  : "Saisis un prompt puis clique sur Envoyer : la clé API OpenAI sera demandée.");
 		}
 
 		// Les appels MCP rapprochés (animation) sont regroupés en une seule ligne de log.
@@ -329,18 +330,40 @@ namespace TestAgentMCP
 			LogLine("DRAG", $"SquareId={square.Id};X={square.Bounds.X};Y={square.Bounds.Y}");
 		}
 
-		private async void btnApplyPrompt_Click(object? sender, EventArgs e)
+		/// <summary>
+		/// Clé OpenAI : jamais embarquée dans la build. Lue au démarrage depuis le stockage local chiffré (DPAPI)
+		/// ou OPENAI_API_KEY ; sinon demandée à l'utilisateur à l'envoi d'un prompt, puis stockée chiffrée.
+		/// </summary>
+		private bool EnsureApiKey()
 		{
-			if (!_agent.IsConfigured)
+			if (_agent.IsConfigured)
 			{
-				SetStatus("Clé API absente. Ajoute OpenAiApiKey dans le .csproj puis redémarre l'application.");
-				return;
+				return true;
 			}
 
+			using var dialog = new ApiKeyDialog();
+			if (dialog.ShowDialog(this) != DialogResult.OK)
+			{
+				return false;
+			}
+
+			_agent.SetApiKey(dialog.ApiKey);
+			ApiKeyStore.Save(dialog.ApiKey);
+			return _agent.IsConfigured;
+		}
+
+		private async void btnApplyPrompt_Click(object? sender, EventArgs e)
+		{
 			var prompt = txtPrompt.Text.Trim();
 			if (string.IsNullOrWhiteSpace(prompt))
 			{
 				SetStatus("Saisis un prompt.");
+				return;
+			}
+
+			if (!EnsureApiKey())
+			{
+				SetStatus("Clé API OpenAI absente : prompt non envoyé.");
 				return;
 			}
 
@@ -365,6 +388,12 @@ namespace TestAgentMCP
 			catch (Exception ex)
 			{
 				AppendStatus($"Erreur agent: {ex.Message}");
+				if (ex.Message.Contains(" 401 ") || ex.Message.Contains(": 401"))
+				{
+					_agent.SetApiKey(null);
+					ApiKeyStore.Delete();
+					AppendStatus("Clé API refusée : elle sera redemandée au prochain envoi.");
+				}
 				LogLine("ERROR", ex.ToString());
 			}
 			finally

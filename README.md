@@ -23,7 +23,7 @@ Le fichier `.mcp.json` à la racine fait la même chose pour ce projet.
 
 - **Souris** : déplacer et modifier les formes directement sur le canvas.
 - **Annuler** : Ctrl+Z (10 états max, modifications MCP comprises).
-- **Animation** : lecteur avec slider et lecture/stop. En animation, l'édition à la souris modifie la frame affichée.
+- **Animation** : lecteur avec slider et lecture/stop. En animation, l'édition à la souris modifie la frame affichée. Boutons « + » (ajoute une copie de la frame affichée après elle) et « 🗑 » (supprime la frame affichée).
 - **Presets** : menu Fichier pour enregistrer/charger la scène (et son animation) en JSON, dans `Documents\TestAgentMCP\Presets`.
 
 ## Exemples
@@ -40,7 +40,7 @@ Ces deux animations ont été créées uniquement via des prompts MCP, « en ave
 
 ## Clé OpenAI (agent par prompt)
 
-Copier `TestAgentMCP/OpenAi.props.example` vers `TestAgentMCP/OpenAi.props` (ignoré par git) et y mettre la clé.
+La clé n'est jamais embarquée dans la build. Au premier prompt, l'app la demande puis la stocke chiffrée (DPAPI, compte Windows courant) dans `%LocalAppData%\TestAgentMCP\openai.key` ; la variable `OPENAI_API_KEY` est aussi lue. Une clé refusée (401) est supprimée et redemandée.
 
 ## Développement
 

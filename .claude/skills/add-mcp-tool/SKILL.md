@@ -51,4 +51,4 @@ Un outil MCP est réparti sur plusieurs fichiers qui doivent rester cohérents. 
 - Oublier d'ajouter l'outil à `McpToolDefinitions.All` : il répond mais n'est jamais listé.
 - Oublier `shapes-agent.md` : le sous-agent ne voit pas l'outil.
 - Appeler du code UI depuis le callback sans `Invoke` : les requêtes HTTP arrivent sur des threads du pool.
-- Ne jamais mettre la clé OpenAI ailleurs que dans `TestAgentMCP/OpenAi.props`.
+- Ne jamais mettre la clé OpenAI dans le code, le `.csproj` ni la build (elle vit dans `ApiKeyStore`).

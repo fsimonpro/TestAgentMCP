@@ -50,8 +50,22 @@
 			btnPlay = new Button();
 			sliderFrame = new TrackBar();
 			lblFrame = new Label();
-			btnCloseAnimation = new Button();
+			btnAddFrame = new Button();
+			btnDeleteFrame = new Button();
 			playTimer = new System.Windows.Forms.Timer(components);
+			toolTip = new ToolTip(components);
+			toolTip.SetToolTip(btnApplyPrompt, "Envoyer le prompt à l'agent OpenAI (Entrée)");
+			toolTip.SetToolTip(btnOpenLog, "Ouvrir le fichier de log");
+			toolTip.SetToolTip(btnClearAll, "Supprimer toutes les formes");
+			toolTip.SetToolTip(btnColor, "Choisir la couleur des formes");
+			toolTip.SetToolTip(btnAddSquare, "Ajouter un carré");
+			toolTip.SetToolTip(btnAddCircle, "Ajouter un cercle");
+			toolTip.SetToolTip(btnAddLosange, "Ajouter un losange");
+			toolTip.SetToolTip(chkDeleteMode, "Mode suppression : un clic sur une forme la supprime");
+			toolTip.SetToolTip(btnPlay, "Lecture / pause de l'animation");
+			toolTip.SetToolTip(sliderFrame, "Naviguer entre les frames");
+			toolTip.SetToolTip(btnAddFrame, "Ajouter une frame (copie de la frame affichée)");
+			toolTip.SetToolTip(btnDeleteFrame, "Supprimer la frame affichée");
 			pnlToolbar.SuspendLayout();
 			menuStrip.SuspendLayout();
 			pnlPlayer.SuspendLayout();
@@ -220,7 +234,8 @@
 			pnlPlayer.Controls.Add(btnPlay);
 			pnlPlayer.Controls.Add(sliderFrame);
 			pnlPlayer.Controls.Add(lblFrame);
-			pnlPlayer.Controls.Add(btnCloseAnimation);
+			pnlPlayer.Controls.Add(btnAddFrame);
+			pnlPlayer.Controls.Add(btnDeleteFrame);
 			pnlPlayer.Location = new Point(0, 724);
 			pnlPlayer.Name = "pnlPlayer";
 			pnlPlayer.Size = new Size(952, 44);
@@ -242,28 +257,37 @@
 			sliderFrame.Location = new Point(60, 4);
 			sliderFrame.Maximum = 1;
 			sliderFrame.Name = "sliderFrame";
-			sliderFrame.Size = new Size(702, 36);
+			sliderFrame.Size = new Size(560, 36);
 			sliderFrame.TabIndex = 1;
 			sliderFrame.TickStyle = TickStyle.None;
 			// 
 			// lblFrame
 			// 
 			lblFrame.ForeColor = Color.White;
-			lblFrame.Location = new Point(776, 6);
+			lblFrame.Location = new Point(630, 6);
 			lblFrame.Name = "lblFrame";
-			lblFrame.Size = new Size(110, 32);
+			lblFrame.Size = new Size(100, 32);
 			lblFrame.TabIndex = 2;
 			lblFrame.Text = "1 / 2";
 			lblFrame.TextAlign = ContentAlignment.MiddleCenter;
 			// 
-			// btnCloseAnimation
+			// btnAddFrame
 			// 
-			btnCloseAnimation.Location = new Point(892, 6);
-			btnCloseAnimation.Name = "btnCloseAnimation";
-			btnCloseAnimation.Size = new Size(48, 32);
-			btnCloseAnimation.TabIndex = 3;
-			btnCloseAnimation.Text = "✕";
-			btnCloseAnimation.UseVisualStyleBackColor = true;
+			btnAddFrame.Location = new Point(744, 6);
+			btnAddFrame.Name = "btnAddFrame";
+			btnAddFrame.Size = new Size(44, 32);
+			btnAddFrame.TabIndex = 4;
+			btnAddFrame.Text = "+";
+			btnAddFrame.UseVisualStyleBackColor = true;
+			// 
+			// btnDeleteFrame
+			// 
+			btnDeleteFrame.Location = new Point(794, 6);
+			btnDeleteFrame.Name = "btnDeleteFrame";
+			btnDeleteFrame.Size = new Size(44, 32);
+			btnDeleteFrame.TabIndex = 5;
+			btnDeleteFrame.Text = "🗑";
+			btnDeleteFrame.UseVisualStyleBackColor = true;
 			// 
 			// playTimer
 			// 
@@ -320,7 +344,9 @@
 		private Button btnPlay;
 		private TrackBar sliderFrame;
 		private Label lblFrame;
-		private Button btnCloseAnimation;
+		private ToolTip toolTip;
+		private Button btnAddFrame;
+		private Button btnDeleteFrame;
 		private System.Windows.Forms.Timer playTimer;
 	}
 }

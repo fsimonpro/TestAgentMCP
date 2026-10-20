@@ -30,7 +30,8 @@ namespace TestAgentMCP
 		{
 			btnPlay.Click += (_, _) => TogglePlayback();
 			sliderFrame.Scroll += (_, _) => ShowFrame(sliderFrame.Value);
-			btnCloseAnimation.Click += (_, _) => EndAnimation();
+			btnAddFrame.Click += (_, _) => AddFrame();
+			btnDeleteFrame.Click += (_, _) => DeleteCurrentFrame();
 			playTimer.Tick += (_, _) => ShowFrame((_currentFrame + 1) % _frames.Count);
 			mnuUndo.Click += (_, _) => UndoOrTextUndo();
 		}
@@ -161,7 +162,33 @@ namespace TestAgentMCP
 			LogLine("ANIMATION", $"Frames={built.Count};Fps={_fps}");
 		}
 
-		private void EndAnimation()
+		/// <summary>Insère une copie de la frame affichée juste après elle et s'y positionne.</summary>
+		private void AddFrame()
+		{
+			if (_frames.Count >= MaxFrames)
+			{
+				AppendStatus($"Animation limitée à {MaxFrames} frames.");
+				return;
+			}
+
+			StopPlayback();
+			PushUndo();
+			if (!HasAnimation)
+			{
+				// Sans animation : la scène devient la frame 1 et on passe sur une copie (frame 2).
+				_frames = [Snapshot()];
+				_currentFrame = 0;
+			}
+
+			_frames.Insert(_currentFrame + 1, Snapshot());
+			_currentFrame++;
+			SyncPlayerUi();
+			Invalidate();
+			AppendStatus($"Frame ajoutée ({_currentFrame + 1} / {_frames.Count}).");
+		}
+
+		/// <summary>Supprime la frame affichée ; s'il n'en reste qu'une, l'animation se termine.</summary>
+		private void DeleteCurrentFrame()
 		{
 			if (!HasAnimation)
 			{
@@ -170,11 +197,23 @@ namespace TestAgentMCP
 
 			StopPlayback();
 			PushUndo();
-			_frames = [];
-			_currentFrame = 0;
-			RefreshPlayer();
+			_frames.RemoveAt(_currentFrame);
+			_currentFrame = Math.Min(_currentFrame, _frames.Count - 1);
+			LoadShapes(_frames[_currentFrame]);
+			if (_frames.Count == 1)
+			{
+				_frames = [];
+				_currentFrame = 0;
+				RefreshPlayer();
+				AppendStatus("Frame supprimée: il ne reste qu'une frame, l'animation est terminée.");
+			}
+			else
+			{
+				SyncPlayerUi();
+				AppendStatus($"Frame supprimée ({_currentFrame + 1} / {_frames.Count}).");
+			}
+
 			Invalidate();
-			AppendStatus("Animation terminée: la frame affichée devient l'état courant.");
 		}
 
 		private void ShowFrame(int index)
@@ -222,20 +261,14 @@ namespace TestAgentMCP
 			SyncPlayerUi();
 		}
 
-		/// <summary>Affiche/masque le lecteur ; la fenêtre grandit pour que la zone de dessin ne change pas.</summary>
+		/// <summary>La timeline est toujours visible (« + » crée l'animation) ; la fenêtre grandit une fois pour qu'elle ne réduise pas la zone de dessin.</summary>
 		private void RefreshPlayer()
 		{
-			var show = HasAnimation;
-			if (show != pnlPlayer.Visible)
+			if (!pnlPlayer.Visible)
 			{
-				if (!show)
-				{
-					pnlPlayer.Visible = false;
-				}
-
-				ClientSize = new Size(ClientSize.Width, ClientSize.Height + (show ? PlayerHeight : -PlayerHeight));
+				ClientSize = new Size(ClientSize.Width, ClientSize.Height + PlayerHeight);
 				pnlPlayer.Location = new Point(0, ClientSize.Height - PlayerHeight);
-				pnlPlayer.Visible = show;
+				pnlPlayer.Visible = true;
 			}
 
 			SyncPlayerUi();
@@ -243,8 +276,16 @@ namespace TestAgentMCP
 
 		private void SyncPlayerUi()
 		{
-			if (!HasAnimation)
+			var animated = HasAnimation;
+			btnPlay.Enabled = animated;
+			sliderFrame.Enabled = animated;
+			btnDeleteFrame.Enabled = animated;
+
+			if (!animated)
 			{
+				sliderFrame.Value = 0;
+				lblFrame.Text = "1 / 1";
+				btnPlay.Text = "▶";
 				return;
 			}
 

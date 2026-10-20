@@ -8,7 +8,7 @@ namespace TestAgentMCP
 	{
 		private const string OpenAiEndpoint = "https://api.openai.com/v1/responses";
 		private readonly HttpClient _httpClient;
-		private readonly string? _apiKey;
+		private string? _apiKey;
 		private readonly string _model;
 		private readonly LocalMcpClient _mcpClient;
 		private readonly Action<string>? _logger;
@@ -26,6 +26,8 @@ namespace TestAgentMCP
 		}
 
 		public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
+
+		public void SetApiKey(string? apiKey) => _apiKey = apiKey?.Trim();
 
 		public async Task<AgentResult> GetActionAsync(string userPrompt, CancellationToken cancellationToken = default)
 		{

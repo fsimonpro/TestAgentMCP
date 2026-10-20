@@ -4,7 +4,6 @@ namespace TestAgentMCP
 {
 	internal static class ProjectSettings
 	{
-		public static string? OpenAiApiKey => GetAssemblyMetadata("OpenAiApiKey");
 		public static string OpenAiModel => GetAssemblyMetadata("OpenAiModel") ?? "gpt-4o-mini";
 
 		private static string? GetAssemblyMetadata(string key)
